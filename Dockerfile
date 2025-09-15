@@ -1,20 +1,34 @@
-FROM python:3.14.0a3-alpine3.21
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim
 
-# Set the working directory
+# Basics for predictable Python behavior
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Use a venv (no root-pip warning) and put it on PATH
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Optional: system deps if you build wheels (uncomment if needed)
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     build-essential gcc \
+#   && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . . 
+# Install deps first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+# Copy the rest of your app
+COPY . .
 
-#Expose the port
+# app should listen on 0.0.0.0:5000
 EXPOSE 5000
 
-# Run app.py when the container launches
+# Drop privileges
+RUN useradd -m app
+USER app
+
+# Start the app
 CMD ["python", "app.py"]
-
-
-
-
